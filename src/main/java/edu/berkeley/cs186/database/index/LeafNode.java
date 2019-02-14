@@ -150,23 +150,30 @@ class LeafNode extends BPlusNode {
 
         int order = metadata.getOrder();
 
-        boolean added = false;
-        List<DataBox> newKeys = new ArrayList<>();
-        List<RecordId> newRids = new ArrayList<>();
 
-        for (int i = 0; i < keys.size(); i++) {
-            if (keys.get(i).compareTo(key) < 0 && !added) {
-                newKeys.add(key);
-                newRids.add(rid);
-                added = true;
-            }
+        if (keys.isEmpty()) {
+            keys.add(key);
+            rids.add(rid);
 
-            newKeys.add(keys.get(i));
-            newRids.add(rids.get(i));
+            sync(transaction);
+            return Optional.empty();
         }
 
-        keys = newKeys;
-        rids = newRids;
+        boolean addedKey = false;
+
+        for (int i = 0; i < keys.size(); i++) {
+            if (key.compareTo(keys.get(i)) < 0) {
+                keys.add(i, key);
+                rids.add(i, rid);
+                addedKey = true;
+                break;
+            }
+        }
+
+        if (!addedKey) {
+            keys.add(key);
+            rids.add(rid);
+        }
 
         if (keys.size() <= 2*order) {
             sync(transaction);
@@ -175,10 +182,21 @@ class LeafNode extends BPlusNode {
             List<DataBox> rightLeafKeys = new ArrayList<>();
             List<RecordId> rightLeafRids = new ArrayList<>();
 
-            for (int i = order + 1; order < keys.size();) {
-                rightLeafKeys.add(keys.remove(i));
-                rightLeafRids.add(rids.remove(i));
+            List<DataBox> newKeys = new ArrayList<>();
+            List<RecordId> newRids = new ArrayList<>();
+
+            for (int i = 0; i < keys.size(); i++) {
+                if (i < order) {
+                    newKeys.add(keys.get(i));
+                    newRids.add(rids.get(i));
+                } else {
+                    rightLeafKeys.add(keys.get(i));
+                    rightLeafRids.add(rids.get(i));
+                }
             }
+
+            keys = newKeys;
+            rids = newRids;
 
             LeafNode rightLeaf = new LeafNode(metadata, rightLeafKeys, rightLeafRids, this.rightSibling, transaction);
 

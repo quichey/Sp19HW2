@@ -103,6 +103,7 @@ class InnerNode extends BPlusNode {
                 pair = child.put(transaction, key, rid);
 
                 mayBeInRightMostChild = false;
+                break;
             }
         }
 
@@ -118,102 +119,55 @@ class InnerNode extends BPlusNode {
         DataBox newKey = pair.get().getFirst();
         Integer newChildPageNum = pair.get().getSecond();
 
-        List<DataBox> newKeys = new ArrayList<>();
-        List<Integer> newChildren = new ArrayList<>();
+        boolean addedKey = false;
 
-        newChildren.add(children.get(0));
-
-        if (keys.size() < 2*order) {
-            for (int i = 0; i < keys.size(); i++) {
-                boolean addedNewKey = false;
-
-                if ((newKey.compareTo(keys.get(i)) < 0) && !addedNewKey) {
-                    newKeys.add(newKey);
-                    newChildren.add(newChildPageNum);
-                    addedNewKey = true;
-                }
-
-                newKeys.add(keys.get(i));
-                newChildren.add(children.get(i+1));
+        for (int i = 0; i < keys.size(); i++) {
+            if (newKey.compareTo(keys.get(i)) < 0) {
+                keys.add(i, newKey);
+                children.add(i + 1, newChildPageNum);
+                addedKey = true;
+                break;
             }
+        }
 
-            this.keys = newKeys;
-            this.children = newChildren;
+        if (!addedKey) {
+            keys.add(newKey);
+            children.add(newChildPageNum);
+        }
 
+        if (keys.size() <= 2*order) {
             sync(transaction);
-
             return Optional.empty();
         }
 
-        boolean addedNewKey = false;
-        for (int i = 0; newKeys.size() < order; i++) {
-            if ((newKey.compareTo(keys.get(i)) < 0) && !addedNewKey) {
-                newKeys.add(newKey);
-                newChildren.add(newChildPageNum);
-                addedNewKey = true;
-            }
-
-            if (newKeys.size() < order) {
-                newKeys.add(keys.get(i));
-                newChildren.add(children.get(i + 1));
-            }
-        }
+        DataBox splitKey = keys.get(order);
 
         List<DataBox> newInnerNodeKeys = new ArrayList<>();
         List<Integer> newInnerNodeChildren = new ArrayList<>();
 
-        Optional<DataBox> splitKey = Optional.empty();
+        List<DataBox> newKeys = new ArrayList<>();
+        List<Integer> newChildren = new ArrayList<>();
 
-        if (addedNewKey) {
-            splitKey = Optional.of(keys.get(order - 1));
-            newInnerNodeChildren.add(children.get(order));
-
-            for (int i = order; i < 2*order; i++) {
-                newInnerNodeKeys.add(keys.get(i));
-                newInnerNodeChildren.add(children.get(i+1));
-            }
-        } else {
-            int offset = order;
-
-            if (newKey.compareTo(keys.get(order)) < 0) {
-                splitKey = Optional.of(newKey);
-                newInnerNodeChildren.add(newChildPageNum);
-                addedNewKey = true;
-            } else {
-                splitKey = Optional.of(keys.get(order));
-                newInnerNodeChildren.add(children.get(order + 1));
-                offset += 1;
-            }
-
-            for (int i = 0; newInnerNodeKeys.size() < order; i++) {
-                if (!addedNewKey && (newKey.compareTo(keys.get(i + offset)) < 0)) {
-                    newInnerNodeKeys.add(newKey);
-                    newInnerNodeChildren.add(newChildPageNum);
-                    addedNewKey = true;
-                }
-
-                if (newInnerNodeKeys.size() < order) {
-                    newInnerNodeKeys.add(keys.get(i + offset));
-                    newInnerNodeChildren.add(children.get(i + offset + 1));
-                }
-            }
+        for (int i = 0; i < order; i++) {
+            newKeys.add(keys.get(i));
+            newChildren.add(children.get(i));
         }
+        newChildren.add(children.get(order));
 
-        if (splitKey.equals(Optional.empty())) {
-            throw new BPlusTreeException("Split Key not found: Error in my Implementation of InnerNode.put");
+        for (int i = order + 1; i < 2*order + 1; i++) {
+            newInnerNodeKeys.add(keys.get(i));
+            newInnerNodeChildren.add(children.get(i));
         }
-
-        InnerNode newInnerNode = new InnerNode(metadata, newInnerNodeKeys, newInnerNodeChildren, transaction);
+        newInnerNodeChildren.add(children.get(2*order + 1));
 
         keys = newKeys;
         children = newChildren;
 
         sync(transaction);
 
-        Integer newInnerNodePageNum = newInnerNode.getPage().getPageNum();
-        Pair<DataBox, Integer> newPair = new Pair<>(splitKey.get(), newInnerNodePageNum);
+        InnerNode newInnerNode = new InnerNode(metadata, newInnerNodeKeys, newInnerNodeChildren, transaction);
 
-        return Optional.of(newPair);
+        return Optional.of(new Pair(splitKey, newInnerNode.getPage().getPageNum()));
     }
 
     // See BPlusNode.bulkLoad.

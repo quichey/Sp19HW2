@@ -265,7 +265,19 @@ public class BPlusTree implements Closeable {
      */
     public void put(BaseTransaction transaction, DataBox key, RecordId rid) throws BPlusTreeException {
         typecheck(key);
-        throw new UnsupportedOperationException("TODO(hw2): implement");
+
+        Optional<Pair<DataBox, Integer>> overflow = root.put(transaction, key, rid);
+
+        if (!overflow.equals(Optional.empty())) {
+            List<DataBox> newRootKeys = new ArrayList<>();
+            List<Integer> newRootChildren = new ArrayList<>();
+
+            newRootKeys.add(overflow.get().getFirst());
+            newRootChildren.add(root.getPage().getPageNum());
+            newRootChildren.add(overflow.get().getSecond());
+
+            root = new InnerNode(metadata, newRootKeys, newRootChildren, transaction);
+        }
     }
 
     /**
