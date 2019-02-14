@@ -169,6 +169,7 @@ class LeafNode extends BPlusNode {
         rids = newRids;
 
         if (keys.size() <= 2*order) {
+            sync(transaction);
             return Optional.empty();
         } else {
             List<DataBox> rightLeafKeys = new ArrayList<>();
@@ -182,6 +183,7 @@ class LeafNode extends BPlusNode {
             LeafNode rightLeaf = new LeafNode(metadata, rightLeafKeys, rightLeafRids, this.rightSibling, transaction);
 
             this.rightSibling = Optional.of(rightLeaf.page.getPageNum());
+            sync(transaction);
 
             return Optional.of(new Pair<DataBox, Integer>(rightLeafKeys.get(0), rightLeaf.page.getPageNum()));
         }
