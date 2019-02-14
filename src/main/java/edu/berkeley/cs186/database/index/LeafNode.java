@@ -143,7 +143,47 @@ class LeafNode extends BPlusNode {
     @Override
     public Optional<Pair<DataBox, Integer>> put(BaseTransaction transaction, DataBox key, RecordId rid)
     throws BPlusTreeException {
-        throw new UnsupportedOperationException("TODO(hw2): implement");
+        if (keys.contains(key)) {
+            throw new BPlusTreeException(String.format("Duplicate Key: %s\n", key));
+        }
+
+        int order = metadata.getOrder();
+
+        boolean added = false;
+        List<DataBox> newKeys = new ArrayList<>();
+        List<RecordId> newRids = new ArrayList<>();
+
+        for (int i = 0; i < keys.size(); i++) {
+            if (keys.get(i).compareTo(key) < 0 && !added) {
+                newKeys.add(key);
+                newRids.add(rid);
+                added = true;
+            }
+
+            newKeys.add(keys.get(i));
+            newRids.add(rids.get(i));
+        }
+
+        keys = newKeys;
+        rids = newRids;
+
+        if (keys.size() <= 2*order) {
+            return Optional.empty();
+        } else {
+            List<DataBox> rightLeafKeys = new ArrayList<>();
+            List<RecordId> rightLeafRids = new ArrayList<>();
+
+            for (int i = order + 1; order < keys.size();) {
+                rightLeafKeys.add(keys.remove(i));
+                rightLeafRids.add(rids.remove(i));
+            }
+
+            LeafNode rightLeaf = new LeafNode(metadata, rightLeafKeys, rightLeafRids, this.rightSibling, transaction);
+
+            this.rightSibling = Optional.of(rightLeaf.page.getPageNum());
+
+            return Optional.of(new Pair<DataBox, Integer>(rightLeafKeys.get(0), rightLeaf.page.getPageNum()));
+        }
     }
 
     // See BPlusNode.bulkLoad.
@@ -341,7 +381,21 @@ class LeafNode extends BPlusNode {
      */
     public static LeafNode fromBytes(BaseTransaction transaction, BPlusTreeMetadata metadata,
                                      int pageNum) {
-        throw new UnsupportedOperationException("TODO(hw2): implement");
+        Page page = metadata.getAllocator().fetchPage(transaction, pageNum);
+        Buffer buf = page.getBuffer(transaction);
+
+        assert(buf.get() == (byte) 1);
+
+        List<DataBox> keys = new ArrayList<>();
+        List<RecordId> rids = new ArrayList<>();
+        Optional<Integer> rightSibling = Optional.of(buf.getInt());
+        int n = buf.getInt();
+        for (int i = 0; i < n; ++i) {
+            keys.add(DataBox.fromBytes(buf, metadata.getKeySchema()));
+            rids.add(RecordId.fromBytes(buf));
+        }
+
+        return new LeafNode(metadata, pageNum, keys, rids, rightSibling, transaction);
     }
 
     // Builtins //////////////////////////////////////////////////////////////////
