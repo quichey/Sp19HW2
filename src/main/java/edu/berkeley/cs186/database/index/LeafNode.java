@@ -245,7 +245,7 @@ class LeafNode extends BPlusNode {
     @Override
     public void remove(BaseTransaction transaction, DataBox key) {
         for (int i = 0; i < keys.size(); i++) {
-            if (keys.get(i) == key) {
+            if (keys.get(i).equals(key)) {
                 keys.remove(i);
                 rids.remove(i);
                 break;
