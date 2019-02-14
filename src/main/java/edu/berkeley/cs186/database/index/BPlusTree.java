@@ -314,7 +314,7 @@ public class BPlusTree implements Closeable {
      */
     public void remove(BaseTransaction transaction, DataBox key) {
         typecheck(key);
-        throw new UnsupportedOperationException("TODO(hw2): implement");
+        root.remove(transaction, key);
     }
 
     // Helpers /////////////////////////////////////////////////////////////////
