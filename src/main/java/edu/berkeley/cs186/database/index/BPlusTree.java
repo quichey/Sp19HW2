@@ -168,7 +168,10 @@ public class BPlusTree implements Closeable {
      */
     public Optional<RecordId> get(BaseTransaction transaction, DataBox key) {
         typecheck(key);
-        throw new UnsupportedOperationException("TODO(hw2): implement");
+
+        LeafNode inQuestion = root.get(transaction, key);
+
+        return inQuestion.getKey(key);
     }
 
     /**

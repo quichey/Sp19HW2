@@ -130,13 +130,13 @@ class LeafNode extends BPlusNode {
     // See BPlusNode.get.
     @Override
     public LeafNode get(BaseTransaction transaction, DataBox key) {
-        throw new UnsupportedOperationException("TODO(hw2): implement");
+        return this;
     }
 
     // See BPlusNode.getLeftmostLeaf.
     @Override
     public LeafNode getLeftmostLeaf(BaseTransaction transaction) {
-        throw new UnsupportedOperationException("TODO(hw2): implement");
+        return this;
     }
 
     // See BPlusNode.put.
@@ -195,13 +195,46 @@ class LeafNode extends BPlusNode {
             Iterator<Pair<DataBox, RecordId>> data,
             float fillFactor)
     throws BPlusTreeException {
-        throw new UnsupportedOperationException("TODO(hw2): implement");
+        int maxNumItems = (int) Math.ceil(metadata.getOrder() / fillFactor);
+        while ((keys.size() < maxNumItems) && data.hasNext()) {
+            Pair<DataBox, RecordId> nextPair = data.next();
+            keys.add(nextPair.getFirst());
+            rids.add(nextPair.getSecond());
+        }
+
+        if (!data.hasNext()) {
+            sync(transaction);
+            return Optional.empty();
+        }
+
+        List<DataBox> rightLeafKeys = new ArrayList<>();
+        List<RecordId> rightLeafRids = new ArrayList<>();
+
+        Pair<DataBox, RecordId> nextPair = data.next();
+        rightLeafKeys.add(nextPair.getFirst());
+        rightLeafRids.add(nextPair.getSecond());
+
+        LeafNode rightLeaf = new LeafNode(metadata, rightLeafKeys, rightLeafRids, Optional.empty(), transaction);
+
+        this.rightSibling = Optional.of(rightLeaf.page.getPageNum());
+
+        sync(transaction);
+
+        return Optional.of(new Pair<DataBox, Integer>(rightLeafKeys.get(0), rightLeaf.page.getPageNum()));
     }
 
     // See BPlusNode.remove.
     @Override
     public void remove(BaseTransaction transaction, DataBox key) {
-        throw new UnsupportedOperationException("TODO(hw2): implement");
+        for (int i = 0; i < keys.size(); i++) {
+            if (keys.get(i) == key) {
+                keys.remove(i);
+                rids.remove(i);
+                break;
+            }
+        }
+
+        sync(transaction);
     }
 
     // Iterators /////////////////////////////////////////////////////////////////
