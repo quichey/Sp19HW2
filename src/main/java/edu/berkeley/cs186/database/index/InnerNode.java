@@ -182,7 +182,19 @@ class InnerNode extends BPlusNode {
     // See BPlusNode.remove.
     @Override
     public void remove(BaseTransaction transaction, DataBox key) {
-        throw new UnsupportedOperationException("TODO(hw2): implement");
+        for (int i = 0; i < keys.size(); i++) {
+            if (key.compareTo(keys.get(i)) < 0) {
+                BPlusNode child = getChild(transaction, i);
+                child.remove(transaction, key);
+                sync(transaction);
+                return;
+            }
+        }
+
+        BPlusNode child = getChild(transaction, keys.size());
+        child.remove(transaction, key);
+        sync(transaction);
+        return;
     }
 
     // Helpers ///////////////////////////////////////////////////////////////////
