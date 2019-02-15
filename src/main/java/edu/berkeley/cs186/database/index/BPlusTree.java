@@ -219,8 +219,7 @@ public class BPlusTree implements Closeable {
      * memory will receive 0 points.
      */
     public Iterator<RecordId> scanAll(BaseTransaction transaction) {
-        // TODO(hw2): Return a BPlusTreeIterator.
-        throw new UnsupportedOperationException("TODO(hw2): implement");
+        return new BPlusTreeIterator(transaction, null);
     }
 
     /**
@@ -249,8 +248,7 @@ public class BPlusTree implements Closeable {
      */
     public Iterator<RecordId> scanGreaterEqual(BaseTransaction transaction, DataBox key) {
         typecheck(key);
-        // TODO(hw2): Return a BPlusTreeIterator.
-        throw new UnsupportedOperationException("TODO(hw2): implement");
+        return new BPlusTreeIterator(transaction, key);
     }
 
     /**
@@ -429,45 +427,69 @@ public class BPlusTree implements Closeable {
     // Iterator ////////////////////////////////////////////////////////////////
     private class BPlusTreeIterator implements Iterator<RecordId> {
         // TODO(hw2): Add whatever fields and constructors you want here.
-        private LeafNode currentLeafNode;
-        private int currentPointer;
-        private int order;
+        private Optional<LeafNode> currentLeafNode;
+        private Iterator<RecordId> currentIterator;
         private BaseTransaction transaction;
-        private boolean reachedEnd;
+        private DataBox key;
 
-        public BPlusTreeIterator(BaseTransaction transaction) {
-            currentLeafNode = root.getLeftmostLeaf(transaction);
-            currentPointer = 0;
-            order = metadata.getOrder();
+        public BPlusTreeIterator() {
+        }
+
+        public BPlusTreeIterator(BaseTransaction transaction, DataBox key) {
+            currentLeafNode = Optional.of(root.getLeftmostLeaf(transaction));
             this.transaction = transaction;
-            reachedEnd = false;
+            this.key = key;
+            initializeIterator();
         }
 
         @Override
         public boolean hasNext() {
-            if (reachedEnd) {
+            if (currentLeafNode.equals(Optional.empty())) {
                 return false;
-            }
-
-            if (currentPointer < currentLeafNode.getKeys().size()) {
+            } else if (currentIterator.hasNext()) {
                 return true;
-            }
-
-            currentPointer = 0;
-            Optional<LeafNode> nextLeafNode = currentLeafNode.getRightSibling(transaction);
-
-            if (nextLeafNode.equals(Optional.empty())) {
-                reachedEnd = true;
-                return false;
             } else {
-                currentLeafNode = nextLeafNode.get();
-                return true;
+                updateLeafNodeAndIterator();
+                if (currentLeafNode.equals(Optional.empty())) {
+                    return false;
+                } else {
+                    return currentIterator.hasNext();
+                }
             }
         }
 
         @Override
         public RecordId next() {
-            throw new UnsupportedOperationException("TODO(hw2): implement");
+            return currentIterator.next();
+        }
+
+        private void updateLeafNodeAndIterator() {
+            currentLeafNode = currentLeafNode.get().getRightSibling(transaction);
+
+            while (!currentLeafNode.equals(Optional.empty()) && !nextIterator().hasNext()) {
+                currentLeafNode = currentLeafNode.get().getRightSibling(transaction);
+            }
+        }
+
+        private Iterator<RecordId> nextIterator() {
+            if (key == null) {
+                currentIterator = currentLeafNode.get().scanAll();
+            } else {
+                currentIterator = currentLeafNode.get().scanGreaterEqual(key);
+            }
+
+            return currentIterator;
+        }
+
+        private void initializeIterator() {
+            if (key == null) {
+                currentIterator = currentLeafNode.get().scanAll();
+            } else {
+                currentIterator = currentLeafNode.get().scanGreaterEqual(key);
+                if (!currentIterator.hasNext()) {
+                    updateLeafNodeAndIterator();
+                }
+            }
         }
     }
 }

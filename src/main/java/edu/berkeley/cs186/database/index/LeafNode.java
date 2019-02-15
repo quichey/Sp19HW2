@@ -435,6 +435,7 @@ class LeafNode extends BPlusNode {
      */
     public static LeafNode fromBytes(BaseTransaction transaction, BPlusTreeMetadata metadata,
                                      int pageNum) {
+
         Page page = metadata.getAllocator().fetchPage(transaction, pageNum);
         Buffer buf = page.getBuffer(transaction);
 
@@ -443,6 +444,9 @@ class LeafNode extends BPlusNode {
         List<DataBox> keys = new ArrayList<>();
         List<RecordId> rids = new ArrayList<>();
         Optional<Integer> rightSibling = Optional.of(buf.getInt());
+        if (rightSibling.get() == -1) {
+            rightSibling = Optional.empty();
+        }
         int n = buf.getInt();
         for (int i = 0; i < n; ++i) {
             keys.add(DataBox.fromBytes(buf, metadata.getKeySchema()));
