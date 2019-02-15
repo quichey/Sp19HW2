@@ -429,10 +429,40 @@ public class BPlusTree implements Closeable {
     // Iterator ////////////////////////////////////////////////////////////////
     private class BPlusTreeIterator implements Iterator<RecordId> {
         // TODO(hw2): Add whatever fields and constructors you want here.
+        private LeafNode currentLeafNode;
+        private int currentPointer;
+        private int order;
+        private BaseTransaction transaction;
+        private boolean reachedEnd;
+
+        public BPlusTreeIterator(BaseTransaction transaction) {
+            currentLeafNode = root.getLeftmostLeaf(transaction);
+            currentPointer = 0;
+            order = metadata.getOrder();
+            this.transaction = transaction;
+            reachedEnd = false;
+        }
 
         @Override
         public boolean hasNext() {
-            throw new UnsupportedOperationException("TODO(hw2): implement");
+            if (reachedEnd) {
+                return false;
+            }
+
+            if (currentPointer < currentLeafNode.getKeys().size()) {
+                return true;
+            }
+
+            currentPointer = 0;
+            Optional<LeafNode> nextLeafNode = currentLeafNode.getRightSibling(transaction);
+
+            if (nextLeafNode.equals(Optional.empty())) {
+                reachedEnd = true;
+                return false;
+            } else {
+                currentLeafNode = nextLeafNode.get();
+                return true;
+            }
         }
 
         @Override
