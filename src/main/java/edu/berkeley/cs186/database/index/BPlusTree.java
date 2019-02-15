@@ -297,7 +297,25 @@ public class BPlusTree implements Closeable {
      */
     public void bulkLoad(BaseTransaction transaction, Iterator<Pair<DataBox, RecordId>> data,
                          float fillFactor) throws BPlusTreeException {
-        throw new UnsupportedOperationException("TODO(hw2): implement");
+        Optional<Pair<DataBox, Integer>> overflow = root.bulkLoad(transaction, data, fillFactor);
+
+        while (!overflow.equals(Optional.empty())) {
+            List<DataBox> newRootKeys = new ArrayList<>();
+            List<Integer> newRootChildren = new ArrayList<>();
+
+            DataBox newRootKey = overflow.get().getFirst();
+
+            Integer firstChild = root.getPage().getPageNum();
+            Integer secondChild = overflow.get().getSecond();
+
+            newRootKeys.add(newRootKey);
+            newRootChildren.add(firstChild);
+            newRootChildren.add(secondChild);
+
+            root = new InnerNode(metadata, newRootKeys, newRootChildren, transaction);
+
+            overflow = root.bulkLoad(transaction, data, fillFactor);
+        }
     }
 
     /**

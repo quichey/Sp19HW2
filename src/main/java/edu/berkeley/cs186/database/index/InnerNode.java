@@ -176,7 +176,54 @@ class InnerNode extends BPlusNode {
             Iterator<Pair<DataBox, RecordId>> data,
             float fillFactor)
     throws BPlusTreeException {
-        throw new UnsupportedOperationException("TODO(hw2): implement");
+        int order = metadata.getOrder();
+        BPlusNode oldestChild = getChild(transaction, keys.size());
+
+        Optional<Pair<DataBox, Integer>> splitPair = oldestChild.bulkLoad(transaction, data, fillFactor);
+
+        while (!splitPair.equals(Optional.empty()) && (keys.size() < 2*order)) {
+            DataBox nextKey = splitPair.get().getFirst();
+            Integer nextChildPageNum = splitPair.get().getSecond();
+
+            keys.add(nextKey);
+            children.add(nextChildPageNum);
+
+            oldestChild = getChild(transaction, keys.size());
+            splitPair = oldestChild.bulkLoad(transaction, data, fillFactor);
+        }
+
+        if (splitPair.equals(Optional.empty())) {
+            sync(transaction);
+            return Optional.empty();
+        } else {
+            DataBox nextKey = splitPair.get().getFirst();
+            Integer nextChildPageNum = splitPair.get().getSecond();
+
+            keys.add(nextKey);
+            children.add(nextChildPageNum);
+
+            List<DataBox> newInnerNodeKeys = new ArrayList<>();
+            List<Integer> newInnerNodeChildren = new ArrayList<>();
+
+            DataBox splitKey = keys.remove(order);
+
+            for (int i = 0; i < order; i++) {
+                DataBox nextNewKey = keys.remove(order);
+                Integer nextNewChild = children.remove(order + 1);
+
+                newInnerNodeKeys.add(nextNewKey);
+                newInnerNodeChildren.add(nextNewChild);
+            }
+
+            Integer nextNewChild = children.remove(order + 1);
+            newInnerNodeChildren.add(nextNewChild);
+
+            InnerNode newInnerNode = new InnerNode(metadata, newInnerNodeKeys, newInnerNodeChildren, transaction);
+            Integer newInnerNodePageNum = newInnerNode.getPage().getPageNum();
+
+            sync(transaction);
+            return Optional.empty().of(new Pair<DataBox, Integer>(splitKey, newInnerNodePageNum));
+        }
     }
 
     // See BPlusNode.remove.

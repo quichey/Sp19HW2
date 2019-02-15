@@ -203,7 +203,7 @@ class LeafNode extends BPlusNode {
             this.rightSibling = Optional.of(rightLeaf.page.getPageNum());
             sync(transaction);
 
-            return Optional.of(new Pair<DataBox, Integer>(rightLeafKeys.get(0), rightLeaf.page.getPageNum()));
+            return Optional.of(new Pair<DataBox, Integer>(rightLeafKeys.get(0), rightLeaf.getPage().getPageNum()));
         }
     }
 
@@ -213,7 +213,7 @@ class LeafNode extends BPlusNode {
             Iterator<Pair<DataBox, RecordId>> data,
             float fillFactor)
     throws BPlusTreeException {
-        int maxNumItems = (int) Math.ceil(metadata.getOrder() / fillFactor);
+        int maxNumItems = (int) Math.ceil(2*metadata.getOrder() * fillFactor);
         while ((keys.size() < maxNumItems) && data.hasNext()) {
             Pair<DataBox, RecordId> nextPair = data.next();
             keys.add(nextPair.getFirst());
