@@ -81,6 +81,23 @@ public class TestBPlusTree {
         String leaf3 = "((10 (10 10)) (11 (11 11)))";
         String sexp = String.format("(%s 4 %s 7 %s 10 %s)", leaf0, leaf1, leaf2, leaf3);
         assertEquals(sexp, tree.toSexp(null));
+
+        BPlusTree myTest = getBPlusTree(Type.intType(), 2);
+
+        List<Pair<DataBox, RecordId>> myData = new ArrayList<>();
+        for (int i = 1; i <= 20; ++i) {
+            myData.add(new Pair<>(new IntDataBox(i), new RecordId(i, (short) i)));
+        }
+
+        myTest.bulkLoad(null, myData.iterator(), fillFactor);
+        leaf3 = "((10 (10 10)) (11 (11 11)) (12 (12 12)))";
+        String leaf4 = "((13 (13 13)) (14 (14 14)) (15 (15 15)))";
+        String leaf5 = "((16 (16 16)) (17 (17 17)) (18 (18 18)))";
+        String leaf6 = "((19 (19 19)) (20 (20 20)))";
+        String inner0 = String.format("(%s 4 %s 7 %s)", leaf0, leaf1, leaf2);
+        String inner1 = String.format("(%s 13 %s 16 %s 19 %s)", leaf3, leaf4, leaf5, leaf6);
+        sexp = String.format("(%s 10 %s)", inner0, inner1);
+        assertEquals(sexp, myTest.toSexp(null));
     }
 
     @Test
