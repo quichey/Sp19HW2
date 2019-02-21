@@ -381,6 +381,10 @@ public class TestBPlusTree {
             myTree.remove(null, new IntDataBox(i));
         }
 
+        Iterator<RecordId> myActual = myTree.scanGreaterEqual(null, new IntDataBox(550));
+        List<RecordId> myExpected = mySortedRids.subList(50, mySortedRids.size());
+        assertEquals(myExpected, iteratorToList(myActual));
+
         List<RecordId> test = iteratorToList(myTree.scanAll(null));
 
         assertEquals(mySortedRids, iteratorToList(myTree.scanAll(null)));
