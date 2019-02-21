@@ -362,11 +362,37 @@ public class TestBPlusTree {
         List<DataBox> keys = new ArrayList<>();
         List<RecordId> rids = new ArrayList<>();
         List<RecordId> sortedRids = new ArrayList<>();
+        List<RecordId> mySortedRids = new ArrayList<>();
         for (int i = 0; i < 1000; ++i) {
             keys.add(new IntDataBox(i));
             rids.add(new RecordId(i, (short) i));
             sortedRids.add(new RecordId(i, (short) i));
+            mySortedRids.add(new RecordId(i, (short) i));
         }
+
+        BPlusTree myTree = getBPlusTree(Type.intType(), 2);
+
+        for (int i = 0; i < keys.size(); i++) {
+            myTree.put(null, keys.get(i), rids.get(i));
+        }
+
+        for (int i = 0; i < keys.size()/2; i++) {
+            mySortedRids.remove(0);
+            myTree.remove(null, new IntDataBox(i));
+        }
+
+        List<RecordId> test = iteratorToList(myTree.scanAll(null));
+
+        assertEquals(mySortedRids, iteratorToList(myTree.scanAll(null)));
+
+        for (int i = 550; i < 600; i++) {
+            mySortedRids.remove(50);
+            myTree.remove(null, new IntDataBox(i));
+        }
+
+        test = iteratorToList(myTree.scanAll(null));
+
+        assertEquals(mySortedRids, iteratorToList(myTree.scanAll(null)));
 
         // Try trees with different orders.
         for (int d = 2; d < 5; ++d) {
